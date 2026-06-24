@@ -1,19 +1,10 @@
 "use server";
 
-import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/supabase/auth";
 
-const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
-const MAX_TOTAL_IMAGE_SIZE = 50 * 1024 * 1024;
 const MAX_IMAGES = 10;
-const MIME_EXTENSIONS: Record<string, string> = {
-  "image/jpeg": "jpg",
-  "image/png": "png",
-  "image/webp": "webp",
-  "image/gif": "gif",
-};
 
 type AdminClient = Awaited<ReturnType<typeof requireAdmin>>["supabase"];
 
@@ -44,46 +35,14 @@ function imageOrder(formData: FormData) {
     if (!Array.isArray(parsed)) throw new Error();
     const tokens = parsed.filter(
       (token): token is string =>
-        typeof token === "string" && /^(existing:[\w-]+|new:\d+)$/.test(token),
+        typeof token === "string" &&
+        (/^existing:[\w-]+$/.test(token) ||
+          /^uploaded:[\w-]+\/[\w-]+\.(jpg|png|webp|gif)$/.test(token)),
     );
     return [...new Set(tokens)].slice(0, MAX_IMAGES);
   } catch {
     throw new Error("图片顺序信息无效，请重新选择图片");
   }
-}
-
-function selectedFiles(formData: FormData) {
-  const files = formData
-    .getAll("images")
-    .filter((item): item is File => item instanceof File && item.size > 0);
-
-  const totalSize = files.reduce((sum, file) => sum + file.size, 0);
-  if (totalSize > MAX_TOTAL_IMAGE_SIZE) {
-    throw new Error("所选图片总大小不能超过 50 MB，请压缩或减少图片");
-  }
-
-  return files;
-}
-
-function validateFile(file: File) {
-  if (!MIME_EXTENSIONS[file.type]) throw new Error(`不支持图片格式：${file.name}`);
-  if (file.size > MAX_IMAGE_SIZE) {
-    throw new Error(`图片 ${file.name} 超过 10 MB`);
-  }
-}
-
-async function uploadImage(file: File, userId: string, supabase: AdminClient) {
-  validateFile(file);
-  const path = `${userId}/${randomUUID()}.${MIME_EXTENSIONS[file.type]}`;
-  const { error } = await supabase.storage
-    .from("archive-images")
-    .upload(path, await file.arrayBuffer(), {
-      contentType: file.type,
-      upsert: false,
-    });
-
-  if (error) throw new Error(`图片上传失败：${error.message}`);
-  return path;
 }
 
 async function cleanupStorage(supabase: AdminClient, paths: string[]) {
@@ -103,12 +62,16 @@ export async function createEntry(formData: FormData) {
   try {
     const fields = validate(formData);
     const order = imageOrder(formData);
-    const files = selectedFiles(formData);
 
     if (!order.length) throw new Error("请至少选择一张图片");
     if (order.some((token) => token.startsWith("existing:"))) {
       throw new Error("新建图文不能引用已有图片");
     }
+    const directPaths = order.map((token) => token.slice("uploaded:".length));
+    if (directPaths.some((path) => !path.startsWith(`${user.id}/`))) {
+      throw new Error("图片归属信息无效，请重新上传");
+    }
+    uploadedPaths.push(...directPaths);
 
     const now = new Date().toISOString();
     const { data: entry, error: entryError } = await supabase
@@ -130,11 +93,7 @@ export async function createEntry(formData: FormData) {
 
     const rows = [];
     for (const [position, token] of order.entries()) {
-      const index = Number(token.split(":")[1]);
-      const file = files[index];
-      if (!file) throw new Error("部分图片未能读取，请重新选择");
-      const storagePath = await uploadImage(file, user.id, supabase);
-      uploadedPaths.push(storagePath);
+      const storagePath = token.slice("uploaded:".length);
       rows.push({ entry_id: entry.id, storage_path: storagePath, position });
     }
 
@@ -171,7 +130,6 @@ export async function updateEntry(id: string, formData: FormData) {
   try {
     const fields = validate(formData);
     const order = imageOrder(formData);
-    const files = selectedFiles(formData);
     if (!order.length) throw new Error("一篇图文至少需要保留一张图片");
 
     const existingImages = existing.entry_images ?? [];
@@ -197,9 +155,10 @@ export async function updateEntry(id: string, formData: FormData) {
           position,
         });
       } else {
-        const file = files[Number(rawId)];
-        if (!file) throw new Error("部分新图片未能读取，请重新选择");
-        const storagePath = await uploadImage(file, user.id, supabase);
+        const storagePath = token.slice("uploaded:".length);
+        if (!storagePath.startsWith(`${user.id}/`)) {
+          throw new Error("图片归属信息无效，请重新上传");
+        }
         uploadedPaths.push(storagePath);
         desired.push({ entry_id: id, storage_path: storagePath, position });
       }
