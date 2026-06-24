@@ -1,14 +1,20 @@
 import Link from "next/link";
 import { SiteHeader } from "@/components/site-header";
 import { requireUser } from "@/lib/supabase/auth";
-import { isAdmin, withSignedImages, type Entry } from "@/lib/entries";
+import {
+  authorLabel,
+  ENTRY_SELECT,
+  isAdmin,
+  withSignedImages,
+  type Entry,
+} from "@/lib/entries";
 
 export default async function Home() {
   const { supabase, user } = await requireUser();
   const admin = await isAdmin(supabase);
   const { data } = await supabase
     .from("entries")
-    .select("*")
+    .select(ENTRY_SELECT)
     .eq("published", true)
     .order("published_at", { ascending: false });
   const entries = await withSignedImages(supabase, (data ?? []) as Entry[]);
@@ -82,14 +88,24 @@ export default async function Home() {
                     />
                   )}
                   <div className="absolute inset-0 bg-black/[0.04]" />
-                  <span className="absolute right-4 top-4 bg-paper/90 px-3 py-2 text-[9px] uppercase tracking-[0.2em] backdrop-blur">
-                    Members only
-                  </span>
+                  <div className="absolute right-4 top-4 flex gap-2">
+                    {(entry.images?.length ?? 0) > 1 && (
+                      <span className="bg-paper/90 px-3 py-2 text-[9px] uppercase tracking-[0.16em] backdrop-blur">
+                        {entry.images?.length} photos
+                      </span>
+                    )}
+                    <span className="bg-paper/90 px-3 py-2 text-[9px] uppercase tracking-[0.2em] backdrop-blur">
+                      Members only
+                    </span>
+                  </div>
                 </div>
                 <div className="mt-5 flex items-start justify-between border-t hairline pt-4">
                   <div>
                     <h3 className="font-serif text-3xl tracking-tight">{entry.title}</h3>
                     <p className="mt-2 text-xs leading-5 text-muted">{entry.summary}</p>
+                    <p className="mt-3 text-[9px] uppercase tracking-[0.12em] text-muted">
+                      By {authorLabel(entry)}
+                    </p>
                   </div>
                   <span className="ml-6 pt-2 text-xs text-muted">
                     {formatDate(entry.published_at ?? entry.created_at)}

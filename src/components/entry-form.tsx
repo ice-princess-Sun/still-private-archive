@@ -1,4 +1,5 @@
 import type { Entry } from "@/lib/entries";
+import { MultiImagePicker } from "@/components/multi-image-picker";
 import { SubmitButton } from "@/components/submit-button";
 
 export function EntryForm({
@@ -84,27 +85,11 @@ export function EntryForm({
         </Field>
 
         <Field
-          label={entry?.image_path ? "更换封面照片" : "封面照片"}
-          required={!entry?.image_path}
-          hint={
-            entry?.image_path
-              ? "不选择新文件将继续使用当前封面"
-              : "建议使用横向照片，JPG、PNG、WebP 或 GIF，最大 10 MB"
-          }
+          label="帖子图片"
+          required={!entry?.images?.length}
+          hint="支持多图；拖动暂未开放，可用箭头调整顺序；每张最大 10 MB"
         >
-          <label className="admin-upload">
-            <span className="admin-upload-icon">＋</span>
-            <span className="admin-upload-copy">
-              <strong>{entry?.image_path ? "选择新照片" : "选择封面照片"}</strong>
-              <small>点击浏览本地文件</small>
-            </span>
-            <input
-              name="image"
-              type="file"
-              required={!entry?.image_path}
-              accept="image/jpeg,image/png,image/webp,image/gif"
-            />
-          </label>
+          <MultiImagePicker existingImages={entry?.images} />
         </Field>
       </FormSection>
 

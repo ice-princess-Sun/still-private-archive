@@ -1,7 +1,13 @@
 import { notFound } from "next/navigation";
 import { SiteHeader } from "@/components/site-header";
 import { requireUser } from "@/lib/supabase/auth";
-import { isAdmin, withSignedImages, type Entry } from "@/lib/entries";
+import {
+  authorLabel,
+  ENTRY_SELECT,
+  isAdmin,
+  withSignedImages,
+  type Entry,
+} from "@/lib/entries";
 
 export default async function EntryPage({
   params,
@@ -12,7 +18,7 @@ export default async function EntryPage({
   const admin = await isAdmin(supabase);
   const { data } = await supabase
     .from("entries")
-    .select("*")
+    .select(ENTRY_SELECT)
     .eq("slug", (await params).slug)
     .single();
 
@@ -34,15 +40,32 @@ export default async function EntryPage({
           </div>
           <p className="self-end text-sm leading-7 text-muted md:col-span-3 md:col-start-10">
             {entry.summary}
+            <span className="mt-6 block text-[10px] uppercase tracking-[0.16em]">
+              发布者 · {authorLabel(entry)}
+            </span>
           </p>
         </header>
 
-        <div
-          className="mt-8 aspect-[16/10] w-full bg-[#d8d5ce] bg-cover bg-center md:mt-12"
-          style={
-            entry.image_url ? { backgroundImage: `url("${entry.image_url}")` } : undefined
-          }
-        />
+        <div className="mt-8 space-y-5 md:mt-12 md:space-y-8">
+          {(entry.images ?? []).map((image, index) => (
+            <figure key={image.id}>
+              <div
+                className={`w-full bg-[#d8d5ce] bg-cover bg-center ${
+                  index === 0 ? "aspect-[16/10]" : "aspect-[4/3]"
+                }`}
+                style={
+                  image.signed_url
+                    ? { backgroundImage: `url("${image.signed_url}")` }
+                    : undefined
+                }
+              />
+              <figcaption className="mt-2 text-right text-[9px] uppercase tracking-[0.14em] text-muted">
+                {String(index + 1).padStart(2, "0")} /{" "}
+                {String(entry.images?.length ?? 0).padStart(2, "0")}
+              </figcaption>
+            </figure>
+          ))}
+        </div>
 
         <div className="mx-auto max-w-2xl py-16 md:py-24">
           {entry.body
