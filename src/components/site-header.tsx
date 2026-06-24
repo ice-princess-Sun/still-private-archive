@@ -27,9 +27,8 @@ export function SiteHeader({
         )}
         {email && (
           <form action={signOut} className="shrink-0">
-            <button className="cursor-pointer whitespace-nowrap border-b border-ink/40 pb-1 transition hover:border-ink">
-              <span className="sm:hidden">退出</span>
-              <span className="hidden sm:inline">Sign out</span>
+            <button className="cursor-pointer whitespace-nowrap border-0 border-b border-ink/40 bg-transparent p-0 pb-1 text-[9px] font-medium uppercase tracking-[0.12em] text-muted transition hover:border-ink hover:text-ink sm:text-[10px] sm:tracking-[0.2em]">
+              <span>Logout</span>
             </button>
           </form>
         )}
