@@ -8,9 +8,11 @@ type PreviewItem = {
   name: string;
   url: string;
   existing: boolean;
+  size: number;
 };
 
 const MAX_IMAGES = 10;
+const MAX_TOTAL_BYTES = 50 * 1024 * 1024;
 
 export function MultiImagePicker({
   existingImages = [],
@@ -26,6 +28,7 @@ export function MultiImagePicker({
           name: `已上传图片 ${index + 1}`,
           url: image.signed_url as string,
           existing: true,
+          size: 0,
         })),
     [existingImages],
   );
@@ -40,12 +43,25 @@ export function MultiImagePicker({
     [newUrls],
   );
 
-  function selectFiles(files: FileList | null) {
+  function selectFiles(input: HTMLInputElement) {
     newUrls.forEach((url) => URL.revokeObjectURL(url));
     const retained = items.filter((item) => item.existing);
-    const selected = Array.from(files ?? []);
+    const selected = Array.from(input.files ?? []);
     const available = Math.max(0, MAX_IMAGES - retained.length);
-    const accepted = selected.slice(0, available);
+    const accepted: File[] = [];
+    let totalBytes = 0;
+
+    for (const file of selected.slice(0, available)) {
+      if (file.size > 10 * 1024 * 1024) continue;
+      if (totalBytes + file.size > MAX_TOTAL_BYTES) break;
+      accepted.push(file);
+      totalBytes += file.size;
+    }
+
+    const transfer = new DataTransfer();
+    accepted.forEach((file) => transfer.items.add(file));
+    input.files = transfer.files;
+
     const urls = accepted.map((file) => URL.createObjectURL(file));
 
     setNewUrls(urls);
@@ -56,13 +72,18 @@ export function MultiImagePicker({
         name: file.name,
         url: urls[index],
         existing: false,
+        size: file.size,
       })),
     ]);
-    setMessage(
-      selected.length > available
-        ? `一篇图文最多 ${MAX_IMAGES} 张图片，已保留前 ${available} 张新图片。`
-        : "",
-    );
+    if (selected.some((file) => file.size > 10 * 1024 * 1024)) {
+      setMessage("单张图片不能超过 10 MB，过大的图片未被加入。");
+    } else if (selected.length > available) {
+      setMessage(`一篇图文最多 ${MAX_IMAGES} 张图片，多余图片未被加入。`);
+    } else if (accepted.length < selected.length) {
+      setMessage("所选图片总大小不能超过 50 MB，请压缩图片后再添加。");
+    } else {
+      setMessage("");
+    }
   }
 
   function removeItem(index: number) {
@@ -99,7 +120,7 @@ export function MultiImagePicker({
           multiple
           required={items.length === 0}
           accept="image/jpeg,image/png,image/webp,image/gif"
-          onChange={(event) => selectFiles(event.target.files)}
+          onChange={(event) => selectFiles(event.currentTarget)}
         />
       </label>
 
@@ -114,7 +135,12 @@ export function MultiImagePicker({
           <div className="mb-3 flex items-center justify-between">
             <p className="text-xs font-medium">图片预览与顺序</p>
             <p className="text-[10px] text-muted">
-              第 1 张作为首页封面 · {items.length}/{MAX_IMAGES}
+              第 1 张作为首页封面 · {items.length}/{MAX_IMAGES} · 新图片共{" "}
+              {formatBytes(
+                items
+                  .filter((item) => !item.existing)
+                  .reduce((sum, item) => sum + item.size, 0),
+              )}
             </p>
           </div>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -158,6 +184,10 @@ export function MultiImagePicker({
       )}
     </div>
   );
+}
+
+function formatBytes(bytes: number) {
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
 function PreviewButton({

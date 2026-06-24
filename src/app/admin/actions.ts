@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/supabase/auth";
 
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
+const MAX_TOTAL_IMAGE_SIZE = 50 * 1024 * 1024;
 const MAX_IMAGES = 10;
 const MIME_EXTENSIONS: Record<string, string> = {
   "image/jpeg": "jpg",
@@ -52,9 +53,16 @@ function imageOrder(formData: FormData) {
 }
 
 function selectedFiles(formData: FormData) {
-  return formData
+  const files = formData
     .getAll("images")
     .filter((item): item is File => item instanceof File && item.size > 0);
+
+  const totalSize = files.reduce((sum, file) => sum + file.size, 0);
+  if (totalSize > MAX_TOTAL_IMAGE_SIZE) {
+    throw new Error("所选图片总大小不能超过 50 MB，请压缩或减少图片");
+  }
+
+  return files;
 }
 
 function validateFile(file: File) {
