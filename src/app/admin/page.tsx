@@ -3,7 +3,12 @@ import { deleteEntry } from "@/app/admin/actions";
 import { DeleteEntryButton } from "@/components/delete-entry-button";
 import { SiteHeader } from "@/components/site-header";
 import { requireAdmin } from "@/lib/supabase/auth";
-import { withSignedImages, type Entry } from "@/lib/entries";
+import {
+  authorLabel,
+  ENTRY_SELECT,
+  withSignedImages,
+  type Entry,
+} from "@/lib/entries";
 
 const successMessages: Record<string, string> = {
   created: "图文已创建。",
@@ -17,7 +22,7 @@ export default async function AdminPage({
   searchParams: Promise<{ success?: string; error?: string }>;
 }) {
   const { supabase, user } = await requireAdmin();
-  const query = await supabase.from("entries").select("*").order("created_at", {
+  const query = await supabase.from("entries").select(ENTRY_SELECT).order("created_at", {
     ascending: false,
   });
   const entries = await withSignedImages(supabase, (query.data ?? []) as Entry[]);
@@ -88,6 +93,9 @@ export default async function AdminPage({
                     </span>
                   </div>
                   <p className="mt-2 max-w-xl text-xs leading-5 text-muted">{entry.summary}</p>
+                  <p className="mt-2 text-[9px] uppercase tracking-[0.12em] text-muted">
+                    {authorLabel(entry)} · {entry.images?.length ?? 0} 张图片
+                  </p>
                 </div>
                 <div className="flex items-center gap-5 text-[10px] uppercase tracking-[0.16em]">
                   {entry.published && (
