@@ -9,23 +9,27 @@ export function SiteHeader({
   isAdmin?: boolean;
 }) {
   return (
-    <header className="flex h-20 items-center justify-between border-b hairline">
-      <Link href="/" className="font-serif text-2xl font-semibold tracking-[-0.04em]">
+    <header className="flex h-20 items-center justify-between gap-4 border-b hairline">
+      <Link
+        href="/"
+        className="shrink-0 font-serif text-xl font-semibold tracking-[-0.04em] sm:text-2xl"
+      >
         STILL
       </Link>
-      <nav className="flex items-center gap-6 text-[10px] font-medium uppercase tracking-[0.2em]">
-        <Link className="hidden text-muted transition hover:text-ink sm:block" href="/about">
+      <nav className="flex min-w-0 items-center gap-3 text-[9px] font-medium uppercase tracking-[0.12em] sm:gap-6 sm:text-[10px] sm:tracking-[0.2em]">
+        <Link className="text-muted transition hover:text-ink" href="/about">
           About
         </Link>
         {isAdmin && (
-          <Link className="hidden text-muted transition hover:text-ink sm:block" href="/admin">
+          <Link className="text-muted transition hover:text-ink" href="/admin">
             Admin
           </Link>
         )}
         {email && (
-          <form action={signOut}>
-            <button className="cursor-pointer border-b border-ink/40 pb-1 transition hover:border-ink">
-              Sign out
+          <form action={signOut} className="shrink-0">
+            <button className="cursor-pointer whitespace-nowrap border-b border-ink/40 pb-1 transition hover:border-ink">
+              <span className="sm:hidden">退出</span>
+              <span className="hidden sm:inline">Sign out</span>
             </button>
           </form>
         )}
