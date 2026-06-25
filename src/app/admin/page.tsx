@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { deleteEntry } from "@/app/admin/actions";
 import { DeleteEntryButton } from "@/components/delete-entry-button";
 import { SiteHeader } from "@/components/site-header";
@@ -6,7 +7,7 @@ import { requireAdmin } from "@/lib/supabase/auth";
 import {
   authorLabel,
   ENTRY_SELECT,
-  withSignedImages,
+  withImageUrls,
   type Entry,
 } from "@/lib/entries";
 
@@ -25,7 +26,7 @@ export default async function AdminPage({
   const query = await supabase.from("entries").select(ENTRY_SELECT).order("created_at", {
     ascending: false,
   });
-  const entries = await withSignedImages(supabase, (query.data ?? []) as Entry[]);
+  const entries = withImageUrls((query.data ?? []) as Entry[]);
   const params = await searchParams;
 
   return (
@@ -73,14 +74,19 @@ export default async function AdminPage({
                 key={entry.id}
                 className="grid gap-5 border-b hairline py-6 md:grid-cols-[120px_1fr_auto] md:items-center"
               >
-                <div
-                  className="aspect-[4/3] bg-[#d8d5ce] bg-cover bg-center"
-                  style={
-                    entry.image_url
-                      ? { backgroundImage: `url("${entry.image_url}")` }
-                      : undefined
-                  }
-                />
+                <div className="relative aspect-[4/3] overflow-hidden bg-[#d8d5ce]">
+                  {entry.image_url && (
+                    <Image
+                      src={entry.image_url}
+                      alt={entry.title}
+                      fill
+                      unoptimized
+                      loading="lazy"
+                      sizes="120px"
+                      className="object-cover"
+                    />
+                  )}
+                </div>
                 <div>
                   <div className="flex items-center gap-3">
                     <h2 className="font-serif text-3xl tracking-tight">{entry.title}</h2>

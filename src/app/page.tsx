@@ -1,11 +1,12 @@
 import Link from "next/link";
+import Image from "next/image";
 import { SiteHeader } from "@/components/site-header";
 import { requireUser } from "@/lib/supabase/auth";
 import {
   authorLabel,
   ENTRY_SELECT,
   isAdmin,
-  withSignedImages,
+  withImageUrls,
   type Entry,
 } from "@/lib/entries";
 
@@ -17,7 +18,7 @@ export default async function Home() {
     .select(ENTRY_SELECT)
     .eq("published", true)
     .order("published_at", { ascending: false });
-  const entries = await withSignedImages(supabase, (data ?? []) as Entry[]);
+  const entries = withImageUrls((data ?? []) as Entry[]);
 
   return (
     <main className="min-h-screen px-5 pb-16 md:px-10 lg:px-16">
@@ -82,9 +83,15 @@ export default async function Home() {
                   }`}
                 >
                   {entry.image_url && (
-                    <div
-                      className="absolute inset-0 scale-[1.01] bg-cover bg-center transition duration-700 ease-out group-hover:scale-[1.035]"
-                      style={{ backgroundImage: `url("${entry.image_url}")` }}
+                    <Image
+                      src={entry.image_url}
+                      alt={entry.title}
+                      fill
+                      unoptimized
+                      priority={index === 0}
+                      loading={index === 0 ? "eager" : "lazy"}
+                      sizes={index % 2 === 0 ? "(min-width: 768px) 58vw, 100vw" : "(min-width: 768px) 42vw, 100vw"}
+                      className="scale-[1.01] object-cover transition duration-700 ease-out group-hover:scale-[1.035]"
                     />
                   )}
                   <div className="absolute inset-0 bg-black/[0.04]" />

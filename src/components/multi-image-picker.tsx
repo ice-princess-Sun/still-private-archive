@@ -23,11 +23,11 @@ export function MultiImagePicker({
   const initialItems = useMemo(
     () =>
       existingImages
-        .filter((image) => image.signed_url)
+        .filter((image) => image.media_url)
         .map((image, index) => ({
           token: `existing:${image.id}`,
           name: `已上传图片 ${index + 1}`,
-          url: image.signed_url as string,
+          url: image.media_url as string,
           existing: true,
           storagePath: image.storage_path,
         })),

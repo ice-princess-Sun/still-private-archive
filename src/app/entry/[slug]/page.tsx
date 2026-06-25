@@ -1,11 +1,12 @@
 import { notFound } from "next/navigation";
+import Image from "next/image";
 import { SiteHeader } from "@/components/site-header";
 import { requireUser } from "@/lib/supabase/auth";
 import {
   authorLabel,
   ENTRY_SELECT,
   isAdmin,
-  withSignedImages,
+  withImageUrls,
   type Entry,
 } from "@/lib/entries";
 
@@ -23,7 +24,7 @@ export default async function EntryPage({
     .single();
 
   if (!data) notFound();
-  const [entry] = await withSignedImages(supabase, [data as Entry]);
+  const [entry] = withImageUrls([data as Entry]);
 
   return (
     <main className="min-h-screen px-5 pb-20 md:px-10 lg:px-16">
@@ -50,15 +51,23 @@ export default async function EntryPage({
           {(entry.images ?? []).map((image, index) => (
             <figure key={image.id}>
               <div
-                className={`w-full bg-[#d8d5ce] bg-cover bg-center ${
+                className={`relative w-full overflow-hidden bg-[#d8d5ce] ${
                   index === 0 ? "aspect-[16/10]" : "aspect-[4/3]"
                 }`}
-                style={
-                  image.signed_url
-                    ? { backgroundImage: `url("${image.signed_url}")` }
-                    : undefined
-                }
-              />
+              >
+                {image.media_url && (
+                  <Image
+                    src={image.media_url}
+                    alt={`${entry.title} — 图片 ${index + 1}`}
+                    fill
+                    unoptimized
+                    priority={index === 0}
+                    loading={index === 0 ? "eager" : "lazy"}
+                    sizes="(min-width: 1280px) 1152px, 100vw"
+                    className="object-cover"
+                  />
+                )}
+              </div>
               <figcaption className="mt-2 text-right text-[9px] uppercase tracking-[0.14em] text-muted">
                 {String(index + 1).padStart(2, "0")} /{" "}
                 {String(entry.images?.length ?? 0).padStart(2, "0")}

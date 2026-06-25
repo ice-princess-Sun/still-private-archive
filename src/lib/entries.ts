@@ -6,7 +6,7 @@ export type EntryImage = {
   storage_path: string;
   position: number;
   created_at: string;
-  signed_url?: string | null;
+  media_url?: string;
 };
 
 export type Entry = {
@@ -29,33 +29,21 @@ export type Entry = {
 
 export const ENTRY_SELECT = "*, entry_images(*)";
 
-export async function withSignedImages(
-  supabase: SupabaseClient,
-  entries: Entry[],
-): Promise<Entry[]> {
-  return Promise.all(
-    entries.map(async (entry) => {
-      const imageRows = [...(entry.entry_images ?? [])].sort(
-        (a, b) => a.position - b.position,
-      );
+export function withImageUrls(entries: Entry[]): Entry[] {
+  return entries.map((entry) => {
+    const images = [...(entry.entry_images ?? [])]
+      .sort((a, b) => a.position - b.position)
+      .map((image) => ({
+        ...image,
+        media_url: `/media/${image.id}?v=${encodeURIComponent(image.created_at)}`,
+      }));
 
-      const images = await Promise.all(
-        imageRows.map(async (image) => {
-          const { data } = await supabase.storage
-            .from("archive-images")
-            .createSignedUrl(image.storage_path, 60 * 60);
-
-          return { ...image, signed_url: data?.signedUrl ?? null };
-        }),
-      );
-
-      return {
-        ...entry,
-        images,
-        image_url: images[0]?.signed_url ?? null,
-      };
-    }),
-  );
+    return {
+      ...entry,
+      images,
+      image_url: images[0]?.media_url ?? null,
+    };
+  });
 }
 
 export function authorLabel(entry: Pick<Entry, "author_email">) {
