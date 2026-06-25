@@ -2,6 +2,8 @@
 
 极简、全站私有的图文网站，使用 Next.js 16 与 Supabase。
 
+查看项目的版本与修改记录：[CHANGELOG.md](./CHANGELOG.md)。
+
 ## 已实现
 
 - 邮箱密码登录及全站访问保护
