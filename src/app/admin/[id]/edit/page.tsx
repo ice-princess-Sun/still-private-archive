@@ -4,7 +4,7 @@ import { updateEntry } from "@/app/admin/actions";
 import { EntryForm } from "@/components/entry-form";
 import { SiteHeader } from "@/components/site-header";
 import { requireAdmin } from "@/lib/supabase/auth";
-import { ENTRY_SELECT, withSignedImages, type Entry } from "@/lib/entries";
+import { ENTRY_SELECT, withImageUrls, type Entry } from "@/lib/entries";
 
 export default async function EditEntryPage({
   params,
@@ -21,7 +21,7 @@ export default async function EditEntryPage({
     .eq("id", id)
     .single();
   if (!data) notFound();
-  const [entry] = await withSignedImages(supabase, [data as Entry]);
+  const [entry] = withImageUrls([data as Entry]);
   const { error } = await searchParams;
 
   return (
