@@ -24,16 +24,15 @@ export default async function Home() {
     <main className="min-h-screen px-5 pb-16 md:px-10 lg:px-16">
       <SiteHeader email={user.email} isAdmin={admin} />
 
-      <section className="fade-up border-b hairline pb-14 pt-20 md:pb-20 md:pt-28">
-        <p className="mb-6 text-[10px] font-medium uppercase tracking-[0.32em] text-muted">
+      <section className="fade-up border-b hairline pb-14 pt-16 md:pb-20 md:pt-24 lg:pt-28">
+        <p className="mb-7 text-[10px] font-medium uppercase tracking-[0.32em] text-muted md:mb-9">
           Private archive · {new Date().getFullYear()}
         </p>
-        <h1 className="max-w-5xl font-serif text-[clamp(3.5rem,10vw,9rem)] leading-[0.78] tracking-[-0.045em]">
-          Quiet things,
-          <br />
-          carefully kept.
+        <h1 className="max-w-6xl font-serif text-[clamp(3.15rem,7.6vw,7.5rem)] leading-[0.9] tracking-[-0.04em]">
+          <span className="block">Quiet things,</span>
+          <span className="mt-1 block md:ml-[8vw] md:mt-2">carefully kept.</span>
         </h1>
-        <div className="mt-12 grid gap-6 md:mt-16 md:grid-cols-12">
+        <div className="mt-14 grid gap-6 md:mt-20 md:grid-cols-12">
           <p className="max-w-md text-sm leading-7 text-muted md:col-start-8 md:col-span-4">
             这里收藏那些值得被慢慢观看的文字与影像。内容仅对受邀成员开放，
             每一次访问都保持私密。
