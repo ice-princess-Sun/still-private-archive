@@ -84,7 +84,7 @@ export default async function AdminPage({
                       unoptimized
                       loading="lazy"
                       sizes="120px"
-                      className="image-drift object-contain"
+                      className="image-drift object-cover"
                     />
                   )}
                 </div>
