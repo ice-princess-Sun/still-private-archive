@@ -44,7 +44,7 @@ export default async function AdminPage({
           </div>
           <Link
             href="/admin/new"
-            className="flex items-center justify-between bg-ink px-5 py-4 text-xs uppercase tracking-[0.18em] text-paper"
+            className="pressable flex items-center justify-between bg-ink px-5 py-4 text-xs uppercase tracking-[0.18em] text-paper hover:bg-[#343430]"
           >
             新建图文 <span className="ml-12">＋</span>
           </Link>
@@ -69,10 +69,11 @@ export default async function AdminPage({
               <p className="mt-3 text-xs text-muted">点击“新建图文”发布第一篇内容。</p>
             </div>
           ) : (
-            entries.map((entry) => (
+            <div className="stagger-children">
+              {entries.map((entry) => (
               <article
                 key={entry.id}
-                className="grid gap-5 border-b hairline py-6 md:grid-cols-[120px_1fr_auto] md:items-center"
+                className="lift-card group grid gap-5 border-b hairline py-6 md:grid-cols-[120px_1fr_auto] md:items-center"
               >
                 <div className="relative aspect-[4/3] overflow-hidden bg-[#d8d5ce]">
                   {entry.image_url && (
@@ -83,7 +84,7 @@ export default async function AdminPage({
                       unoptimized
                       loading="lazy"
                       sizes="120px"
-                      className="object-cover"
+                      className="image-drift object-cover"
                     />
                   )}
                 </div>
@@ -105,17 +106,18 @@ export default async function AdminPage({
                 </div>
                 <div className="flex items-center gap-5 text-[10px] uppercase tracking-[0.16em]">
                   {entry.published && (
-                    <Link href={`/entry/${entry.slug}`} className="text-muted hover:text-ink">
+                    <Link href={`/entry/${entry.slug}`} className="interactive-link text-muted hover:text-ink">
                       查看
                     </Link>
                   )}
-                  <Link href={`/admin/${entry.id}/edit`} className="hover:underline">
+                  <Link href={`/admin/${entry.id}/edit`} className="interactive-link">
                     编辑
                   </Link>
                   <DeleteEntryButton action={deleteEntry.bind(null, entry.id)} />
                 </div>
               </article>
-            ))
+              ))}
+            </div>
           )}
         </div>
       </section>

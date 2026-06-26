@@ -54,6 +54,87 @@ input {
   border-color: var(--line);
 }
 
+.interactive-link {
+  position: relative;
+  transition: color 180ms ease;
+}
+
+.interactive-link::after {
+  position: absolute;
+  right: 0;
+  bottom: -0.35rem;
+  left: 0;
+  height: 1px;
+  background: currentColor;
+  content: "";
+  transform: scaleX(0);
+  transform-origin: right;
+  transition: transform 260ms cubic-bezier(.2,.75,.2,1);
+}
+
+.interactive-link:hover::after,
+.interactive-link:focus-visible::after {
+  transform: scaleX(1);
+  transform-origin: left;
+}
+
+.lift-card {
+  transition:
+    transform 420ms cubic-bezier(.2,.75,.2,1),
+    opacity 420ms ease,
+    filter 420ms ease;
+}
+
+.lift-card:hover {
+  transform: translateY(-0.35rem);
+}
+
+.pressable {
+  transition:
+    transform 180ms ease,
+    background 180ms ease,
+    border-color 180ms ease,
+    color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.pressable:hover {
+  transform: translateY(-0.12rem);
+  box-shadow: 0 1rem 2.5rem rgba(23, 23, 20, 0.1);
+}
+
+.pressable:active {
+  transform: translateY(0.02rem) scale(0.99);
+  box-shadow: none;
+}
+
+.image-drift {
+  transition:
+    transform 900ms cubic-bezier(.2,.75,.2,1),
+    filter 900ms ease;
+}
+
+.group:hover .image-drift {
+  filter: contrast(1.03) saturate(1.02);
+  transform: scale(1.045);
+}
+
+.reveal-soft {
+  animation: reveal-soft 760ms cubic-bezier(.2,.75,.2,1) both;
+}
+
+.stagger-children > * {
+  animation: reveal-soft 680ms cubic-bezier(.2,.75,.2,1) both;
+}
+
+.stagger-children > *:nth-child(1) { animation-delay: 40ms; }
+.stagger-children > *:nth-child(2) { animation-delay: 110ms; }
+.stagger-children > *:nth-child(3) { animation-delay: 180ms; }
+.stagger-children > *:nth-child(4) { animation-delay: 250ms; }
+.stagger-children > *:nth-child(5) { animation-delay: 320ms; }
+.stagger-children > *:nth-child(6) { animation-delay: 390ms; }
+.stagger-children > *:nth-child(n + 7) { animation-delay: 460ms; }
+
 .admin-input {
   margin-top: 0.65rem;
   width: 100%;
@@ -276,6 +357,32 @@ input {
   to { opacity: 1; transform: translateY(0); }
 }
 
+@keyframes reveal-soft {
+  from {
+    opacity: 0;
+    transform: translateY(1.25rem);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .fade-up { animation: none; }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 1ms !important;
+  }
+
+  .fade-up,
+  .reveal-soft,
+  .stagger-children > * {
+    animation: none;
+  }
 }

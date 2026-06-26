@@ -72,7 +72,7 @@ export default async function Home() {
               <Link
                 href={`/entry/${entry.slug}`}
                 key={entry.slug}
-                className={`group block ${
+                className={`group lift-card block ${
                   index % 2 === 0 ? "md:col-span-7" : "md:col-span-5"
                 }`}
               >
@@ -90,11 +90,11 @@ export default async function Home() {
                       priority={index === 0}
                       loading={index === 0 ? "eager" : "lazy"}
                       sizes={index % 2 === 0 ? "(min-width: 768px) 58vw, 100vw" : "(min-width: 768px) 42vw, 100vw"}
-                      className="scale-[1.01] object-cover transition duration-700 ease-out group-hover:scale-[1.035]"
+                      className="image-drift scale-[1.01] object-cover"
                     />
                   )}
-                  <div className="absolute inset-0 bg-black/[0.04]" />
-                  <div className="absolute right-4 top-4 flex gap-2">
+                  <div className="absolute inset-0 bg-black/[0.04] transition duration-500 group-hover:bg-black/[0.01]" />
+                  <div className="absolute right-4 top-4 flex gap-2 transition duration-300 group-hover:-translate-y-1">
                     {(entry.images?.length ?? 0) > 1 && (
                       <span className="bg-paper/90 px-3 py-2 text-[9px] uppercase tracking-[0.16em] backdrop-blur">
                         {entry.images?.length} photos
@@ -107,7 +107,9 @@ export default async function Home() {
                 </div>
                 <div className="mt-5 flex items-start justify-between border-t hairline pt-4">
                   <div>
-                    <h3 className="font-serif text-3xl tracking-tight">{entry.title}</h3>
+                    <h3 className="font-serif text-3xl tracking-tight transition duration-300 group-hover:tracking-[-0.03em]">
+                      {entry.title}
+                    </h3>
                     <p className="mt-2 text-xs leading-5 text-muted">{entry.summary}</p>
                     <p className="mt-3 text-[9px] uppercase tracking-[0.12em] text-muted">
                       By {authorLabel(entry)}
