@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { SiteHeader } from "@/components/site-header";
+import { TimeAmbienceKicker } from "@/components/time-ambience";
 import { requireUser } from "@/lib/supabase/auth";
 import {
   authorLabel,
@@ -25,9 +26,7 @@ export default async function Home() {
       <SiteHeader email={user.email} isAdmin={admin} />
 
       <section className="fade-up border-b hairline pb-14 pt-16 md:pb-20 md:pt-24 lg:pt-28">
-        <p className="mb-7 text-[10px] font-medium uppercase tracking-[0.32em] text-muted md:mb-9">
-          Private archive · {new Date().getFullYear()}
-        </p>
+        <TimeAmbienceKicker year={new Date().getFullYear()} />
         <h1 className="max-w-6xl font-serif text-[clamp(3.15rem,7.6vw,7.5rem)] leading-[0.9] tracking-[-0.04em]">
           <span className="block">Quiet things,</span>
           <span className="mt-1 block md:ml-[8vw] md:mt-2">carefully kept.</span>
