@@ -7,6 +7,7 @@ import { requireAdmin } from "@/lib/supabase/auth";
 const MAX_IMAGES = 10;
 
 type AdminClient = Awaited<ReturnType<typeof requireAdmin>>["supabase"];
+type MoveDirection = "up" | "down";
 
 function value(formData: FormData, key: string) {
   return String(formData.get(key) ?? "").trim();
@@ -54,6 +55,17 @@ function fail(path: string, error: unknown): never {
   redirect(`${path}?error=${encodeURIComponent(message)}`);
 }
 
+async function nextDisplayOrder(supabase: AdminClient) {
+  const { data } = await supabase
+    .from("entries")
+    .select("display_order")
+    .order("display_order", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  return typeof data?.display_order === "number" ? data.display_order - 1000 : 0;
+}
+
 export async function createEntry(formData: FormData) {
   const { supabase, user } = await requireAdmin();
   const uploadedPaths: string[] = [];
@@ -80,6 +92,7 @@ export async function createEntry(formData: FormData) {
         ...fields,
         author_id: user.id,
         author_email: user.email ?? null,
+        display_order: await nextDisplayOrder(supabase),
         published_at: fields.published ? now : null,
         updated_at: now,
       })
@@ -255,4 +268,39 @@ export async function deleteEntry(id: string) {
   revalidatePath(`/entry/${entry.slug}`);
   revalidatePath("/admin");
   redirect("/admin?success=deleted");
+}
+
+export async function moveEntry(id: string, direction: MoveDirection) {
+  const { supabase } = await requireAdmin();
+  const { data, error } = await supabase
+    .from("entries")
+    .select("id,display_order,created_at")
+    .order("display_order", { ascending: true })
+    .order("created_at", { ascending: false });
+
+  if (error) fail("/admin", error);
+
+  const entries = data ?? [];
+  const currentIndex = entries.findIndex((entry) => entry.id === id);
+  const targetIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
+
+  if (currentIndex < 0 || targetIndex < 0 || targetIndex >= entries.length) {
+    redirect("/admin");
+  }
+
+  const reordered = [...entries];
+  const [current] = reordered.splice(currentIndex, 1);
+  reordered.splice(targetIndex, 0, current);
+
+  for (const [index, entry] of reordered.entries()) {
+    const { error: updateError } = await supabase
+      .from("entries")
+      .update({ display_order: (index + 1) * 1000 })
+      .eq("id", entry.id);
+    if (updateError) fail("/admin", updateError);
+  }
+
+  revalidatePath("/");
+  revalidatePath("/admin");
+  redirect("/admin?success=reordered");
 }

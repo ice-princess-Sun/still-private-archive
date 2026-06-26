@@ -18,6 +18,7 @@ export type Entry = {
   image_path: string | null;
   published: boolean;
   published_at: string | null;
+  display_order: number;
   created_at: string;
   updated_at: string;
   author_id: string | null;

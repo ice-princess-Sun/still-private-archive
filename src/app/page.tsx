@@ -18,6 +18,7 @@ export default async function Home() {
     .from("entries")
     .select(ENTRY_SELECT)
     .eq("published", true)
+    .order("display_order", { ascending: true })
     .order("published_at", { ascending: false });
   const entries = withImageUrls((data ?? []) as Entry[]);
 

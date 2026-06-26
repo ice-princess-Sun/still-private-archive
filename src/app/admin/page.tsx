@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import { deleteEntry } from "@/app/admin/actions";
+import { deleteEntry, moveEntry } from "@/app/admin/actions";
 import { DeleteEntryButton } from "@/components/delete-entry-button";
 import { SiteHeader } from "@/components/site-header";
 import { requireAdmin } from "@/lib/supabase/auth";
@@ -15,6 +15,7 @@ const successMessages: Record<string, string> = {
   created: "图文已创建。",
   updated: "修改已保存。",
   deleted: "图文已删除。",
+  reordered: "首页顺序已更新。",
 };
 
 export default async function AdminPage({
@@ -23,9 +24,11 @@ export default async function AdminPage({
   searchParams: Promise<{ success?: string; error?: string }>;
 }) {
   const { supabase, user } = await requireAdmin();
-  const query = await supabase.from("entries").select(ENTRY_SELECT).order("created_at", {
-    ascending: false,
-  });
+  const query = await supabase
+    .from("entries")
+    .select(ENTRY_SELECT)
+    .order("display_order", { ascending: true })
+    .order("created_at", { ascending: false });
   const entries = withImageUrls((query.data ?? []) as Entry[]);
   const params = await searchParams;
 
@@ -70,7 +73,7 @@ export default async function AdminPage({
             </div>
           ) : (
             <div className="stagger-children">
-              {entries.map((entry) => (
+              {entries.map((entry, index) => (
               <article
                 key={entry.id}
                 className="lift-card group grid gap-5 border-b hairline py-6 md:grid-cols-[120px_1fr_auto] md:items-center"
@@ -104,7 +107,23 @@ export default async function AdminPage({
                     {authorLabel(entry)} · {entry.images?.length ?? 0} 张图片
                   </p>
                 </div>
-                <div className="flex items-center gap-5 text-[10px] uppercase tracking-[0.16em]">
+                <div className="flex flex-wrap items-center gap-4 text-[10px] uppercase tracking-[0.16em] md:justify-end">
+                  <form action={moveEntry.bind(null, entry.id, "up")}>
+                    <button
+                      disabled={index === 0}
+                      className="interactive-link cursor-pointer border-0 bg-transparent p-0 uppercase tracking-[0.16em] text-muted disabled:cursor-not-allowed disabled:opacity-30"
+                    >
+                      上移
+                    </button>
+                  </form>
+                  <form action={moveEntry.bind(null, entry.id, "down")}>
+                    <button
+                      disabled={index === entries.length - 1}
+                      className="interactive-link cursor-pointer border-0 bg-transparent p-0 uppercase tracking-[0.16em] text-muted disabled:cursor-not-allowed disabled:opacity-30"
+                    >
+                      下移
+                    </button>
+                  </form>
                   {entry.published && (
                     <Link href={`/entry/${entry.slug}`} className="interactive-link text-muted hover:text-ink">
                       查看
