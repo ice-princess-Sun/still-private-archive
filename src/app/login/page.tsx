@@ -1,9 +1,36 @@
 import { signIn } from "@/app/actions";
+import { LoginHero } from "@/components/login-hero";
 
 const messages: Record<string, string> = {
   "missing-config": "尚未配置 Supabase 环境变量，请先按 README 完成配置。",
   "Invalid login credentials": "邮箱或密码不正确。",
 };
+
+const heroImages = [
+  {
+    url: "https://images.unsplash.com/photo-1497250681960-ef046c08a56e?auto=format&fit=crop&w=2200&q=88",
+    position: "center",
+  },
+  {
+    url: "https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=2200&q=88",
+    position: "center",
+  },
+  {
+    url: "https://images.unsplash.com/photo-1425913397330-cf8af2ff40a1?auto=format&fit=crop&w=2200&q=88",
+    position: "center",
+  },
+  {
+    url: "https://images.unsplash.com/photo-1511497584788-876760111969?auto=format&fit=crop&w=2200&q=88",
+    position: "center",
+  },
+];
+
+function getRotatingHeroImageIndex() {
+  const rotationDays = 7;
+  const day = Math.floor(Date.now() / 86_400_000);
+
+  return Math.floor(day / rotationDays) % heroImages.length;
+}
 
 export default async function LoginPage({
   searchParams,
@@ -12,31 +39,14 @@ export default async function LoginPage({
 }) {
   const { error } = await searchParams;
   const message = error ? messages[error] ?? error : null;
+  const heroImageIndex = getRotatingHeroImageIndex();
 
   return (
-    <main className="grid min-h-screen lg:grid-cols-2">
-      <section className="relative hidden overflow-hidden bg-[#262923] lg:block">
-        <div
-          className="absolute inset-0 bg-cover bg-center opacity-80"
-          style={{
-            backgroundImage:
-              'url("https://images.unsplash.com/photo-1497250681960-ef046c08a56e?auto=format&fit=crop&w=1800&q=88")',
-          }}
-        />
-        <div className="absolute inset-0 bg-black/20" />
-        <p className="absolute left-10 top-9 font-serif text-2xl font-semibold tracking-[-0.04em] text-white">
-          STILL
-        </p>
-        <blockquote className="absolute bottom-10 left-10 max-w-md font-serif text-4xl leading-tight text-white">
-          “We keep what time would otherwise take away.”
-        </blockquote>
-      </section>
+    <main className="grid min-h-screen lg:grid-cols-[minmax(0,1.6fr)_minmax(25rem,1fr)]">
+      <LoginHero images={heroImages} initialIndex={heroImageIndex} />
 
-      <section className="flex min-h-screen items-center px-6 py-16 sm:px-16 lg:px-[12%]">
+      <section className="flex items-center px-6 py-14 sm:px-16 lg:min-h-screen lg:px-[13%]">
         <div className="fade-up w-full max-w-md">
-          <p className="mb-16 font-serif text-2xl font-semibold tracking-[-0.04em] lg:hidden">
-            STILL
-          </p>
           <p className="text-[10px] font-medium uppercase tracking-[0.28em] text-muted">
             Private access
           </p>
@@ -77,7 +87,7 @@ export default async function LoginPage({
               </p>
             )}
 
-            <button className="group flex w-full cursor-pointer items-center justify-between bg-ink px-5 py-4 text-xs font-medium uppercase tracking-[0.2em] text-paper transition hover:bg-[#343430]">
+            <button className="group pressable flex w-full cursor-pointer items-center justify-between bg-ink px-5 py-4 text-xs font-medium uppercase tracking-[0.2em] text-paper hover:bg-[#343430]">
               Enter archive
               <span className="transition-transform group-hover:translate-x-1">→</span>
             </button>

@@ -47,9 +47,9 @@ export default async function EntryPage({
           </p>
         </header>
 
-        <div className="mt-8 space-y-5 md:mt-12 md:space-y-8">
+        <div className="stagger-children mt-8 space-y-5 md:mt-12 md:space-y-8">
           {(entry.images ?? []).map((image, index) => (
-            <figure key={image.id}>
+            <figure key={image.id} className="group">
               <div
                 className={`relative w-full overflow-hidden bg-[#d8d5ce] ${
                   index === 0 ? "aspect-[16/10]" : "aspect-[4/3]"
@@ -64,9 +64,10 @@ export default async function EntryPage({
                     priority={index === 0}
                     loading={index === 0 ? "eager" : "lazy"}
                     sizes="(min-width: 1280px) 1152px, 100vw"
-                    className="object-cover"
+                    className="image-drift object-cover"
                   />
                 )}
+                <div className="absolute inset-0 bg-black/[0.02] transition duration-500 group-hover:bg-black/0" />
               </div>
               <figcaption className="mt-2 text-right text-[9px] uppercase tracking-[0.14em] text-muted">
                 {String(index + 1).padStart(2, "0")} /{" "}
@@ -76,7 +77,7 @@ export default async function EntryPage({
           ))}
         </div>
 
-        <div className="mx-auto max-w-2xl py-16 md:py-24">
+        <div className="stagger-children mx-auto max-w-2xl py-16 md:py-24">
           {entry.body
             .split(/\n\s*\n/)
             .filter(Boolean)
