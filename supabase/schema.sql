@@ -17,7 +17,28 @@ create table if not exists public.entries (
 alter table public.entries
   add column if not exists updated_at timestamptz not null default now(),
   add column if not exists author_id uuid references auth.users(id) on delete set null,
-  add column if not exists author_email text;
+  add column if not exists author_email text,
+  add column if not exists display_order integer;
+
+with ranked_entries as (
+  select
+    id,
+    row_number() over (
+      order by coalesce(published_at, created_at) desc, created_at desc
+    ) * 1000 as sort_value
+  from public.entries
+  where display_order is null
+)
+update public.entries
+set display_order = ranked_entries.sort_value
+from ranked_entries
+where entries.id = ranked_entries.id;
+
+alter table public.entries
+  alter column display_order set default 0;
+
+create index if not exists entries_display_order_idx
+on public.entries (display_order, published_at desc, created_at desc);
 
 create table if not exists public.entry_images (
   id uuid primary key default gen_random_uuid(),
