@@ -5,6 +5,8 @@
   --ink: #171714;
   --muted: #77756f;
   --line: rgba(23, 23, 20, 0.14);
+  --ambience-glow: rgba(255, 255, 255, 0);
+  --ambience-shadow: rgba(23, 23, 20, 0.04);
   --font-sans: "Helvetica Neue", "PingFang SC", "Hiragino Sans GB",
     "Microsoft YaHei", Arial, sans-serif;
   --font-serif: "Iowan Old Style", "Baskerville", "Times New Roman",
@@ -19,6 +21,42 @@
   --font-serif: var(--font-serif);
 }
 
+html[data-ambience="dawn"] {
+  --paper: #f5efe6;
+  --ink: #1f1a15;
+  --muted: #8a7564;
+  --line: rgba(31, 26, 21, 0.13);
+  --ambience-glow: rgba(221, 162, 105, 0.18);
+  --ambience-shadow: rgba(96, 65, 37, 0.05);
+}
+
+html[data-ambience="day"] {
+  --paper: #f2f0eb;
+  --ink: #171714;
+  --muted: #77756f;
+  --line: rgba(23, 23, 20, 0.14);
+  --ambience-glow: rgba(255, 255, 255, 0);
+  --ambience-shadow: rgba(23, 23, 20, 0.04);
+}
+
+html[data-ambience="dusk"] {
+  --paper: #eee8e1;
+  --ink: #1d1918;
+  --muted: #81716d;
+  --line: rgba(29, 25, 24, 0.14);
+  --ambience-glow: rgba(160, 94, 78, 0.16);
+  --ambience-shadow: rgba(70, 40, 38, 0.06);
+}
+
+html[data-ambience="night"] {
+  --paper: #1d1d19;
+  --ink: #f1eee6;
+  --muted: #aaa49a;
+  --line: rgba(241, 238, 230, 0.16);
+  --ambience-glow: rgba(89, 113, 95, 0.14);
+  --ambience-shadow: rgba(0, 0, 0, 0.18);
+}
+
 * {
   box-sizing: border-box;
 }
@@ -28,12 +66,32 @@ html {
 }
 
 body {
+  position: relative;
   min-height: 100%;
   margin: 0;
   background: var(--paper);
   color: var(--ink);
   font-family: var(--font-sans), sans-serif;
   font-weight: 300;
+  transition: background 900ms ease, color 900ms ease;
+}
+
+body::before {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 12% 8%, var(--ambience-glow), transparent 32rem),
+    radial-gradient(circle at 88% 18%, var(--ambience-shadow), transparent 28rem);
+  content: "";
+  opacity: 0.9;
+  transition: background 900ms ease, opacity 900ms ease;
+}
+
+body > main {
+  position: relative;
+  z-index: 1;
 }
 
 a {
