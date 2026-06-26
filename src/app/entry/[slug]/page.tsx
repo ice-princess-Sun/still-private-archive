@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import Image from "next/image";
+import { EntryImageFrame } from "@/components/entry-image-frame";
 import { SiteHeader } from "@/components/site-header";
 import { requireUser } from "@/lib/supabase/auth";
 import {
@@ -50,25 +50,13 @@ export default async function EntryPage({
         <div className="stagger-children mt-8 space-y-5 md:mt-12 md:space-y-8">
           {(entry.images ?? []).map((image, index) => (
             <figure key={image.id} className="group">
-              <div
-                className={`relative w-full overflow-hidden bg-[#d8d5ce] ${
-                  index === 0 ? "aspect-[16/10]" : "aspect-[4/3]"
-                }`}
-              >
-                {image.media_url && (
-                  <Image
-                    src={image.media_url}
-                    alt={`${entry.title} — 图片 ${index + 1}`}
-                    fill
-                    unoptimized
-                    priority={index === 0}
-                    loading={index === 0 ? "eager" : "lazy"}
-                    sizes="(min-width: 1280px) 1152px, 100vw"
-                    className="image-drift object-cover"
-                  />
-                )}
-                <div className="absolute inset-0 bg-black/[0.02] transition duration-500 group-hover:bg-black/0" />
-              </div>
+              {image.media_url && (
+                <EntryImageFrame
+                  src={image.media_url}
+                  alt={`${entry.title} — 图片 ${index + 1}`}
+                  priority={index === 0}
+                />
+              )}
               <figcaption className="mt-2 text-right text-[9px] uppercase tracking-[0.14em] text-muted">
                 {String(index + 1).padStart(2, "0")} /{" "}
                 {String(entry.images?.length ?? 0).padStart(2, "0")}

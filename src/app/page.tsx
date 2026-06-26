@@ -89,7 +89,7 @@ export default async function Home() {
                       priority={index === 0}
                       loading={index === 0 ? "eager" : "lazy"}
                       sizes={index % 2 === 0 ? "(min-width: 768px) 58vw, 100vw" : "(min-width: 768px) 42vw, 100vw"}
-                      className="image-drift scale-[1.01] object-cover"
+                      className="image-drift scale-[0.985] object-contain"
                     />
                   )}
                   <div className="absolute inset-0 bg-black/[0.04] transition duration-500 group-hover:bg-black/[0.01]" />
