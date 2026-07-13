@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { requestEntryNotification } from "@/lib/notifications";
 import { requireAdmin } from "@/lib/supabase/auth";
 
 const MAX_IMAGES = 10;
@@ -70,9 +71,11 @@ export async function createEntry(formData: FormData) {
   const { supabase, user } = await requireAdmin();
   const uploadedPaths: string[] = [];
   let entryId: string | null = null;
+  let shouldNotify = false;
 
   try {
     const fields = validate(formData);
+    shouldNotify = fields.published;
     const order = imageOrder(formData);
 
     if (!order.length) throw new Error("请至少选择一张图片");
@@ -125,12 +128,19 @@ export async function createEntry(formData: FormData) {
 
   revalidatePath("/");
   revalidatePath("/admin");
-  redirect("/admin?success=created");
+  const notification =
+    shouldNotify && entryId
+      ? await requestEntryNotification(supabase, entryId, "publish")
+      : null;
+  redirect(
+    `/admin?success=created${notification ? `&notification=${notification.outcome}` : ""}`,
+  );
 }
 
 export async function updateEntry(id: string, formData: FormData) {
   const { supabase, user } = await requireAdmin();
   const uploadedPaths: string[] = [];
+  let becamePublished = false;
 
   const { data: existing } = await supabase
     .from("entries")
@@ -142,6 +152,7 @@ export async function updateEntry(id: string, formData: FormData) {
 
   try {
     const fields = validate(formData);
+    becamePublished = fields.published && !existing.published;
     const order = imageOrder(formData);
     if (!order.length) throw new Error("一篇图文至少需要保留一张图片");
 
@@ -243,7 +254,12 @@ export async function updateEntry(id: string, formData: FormData) {
   revalidatePath("/");
   revalidatePath(`/entry/${existing.slug}`);
   revalidatePath("/admin");
-  redirect("/admin?success=updated");
+  const notification = becamePublished
+    ? await requestEntryNotification(supabase, id, "publish")
+    : null;
+  redirect(
+    `/admin?success=updated${notification ? `&notification=${notification.outcome}` : ""}`,
+  );
 }
 
 export async function deleteEntry(id: string) {
@@ -303,4 +319,12 @@ export async function moveEntry(id: string, direction: MoveDirection) {
   revalidatePath("/");
   revalidatePath("/admin");
   redirect("/admin?success=reordered");
+}
+
+export async function sendEntryNotification(id: string) {
+  const { supabase } = await requireAdmin();
+  const result = await requestEntryNotification(supabase, id, "manual");
+
+  revalidatePath("/admin");
+  redirect(`/admin?success=notification-${result.outcome}`);
 }
