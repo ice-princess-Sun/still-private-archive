@@ -56,6 +56,28 @@ create table if not exists public.admins (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.notification_deliveries (
+  id uuid primary key default gen_random_uuid(),
+  entry_id uuid not null references public.entries(id) on delete cascade,
+  recipient_user_id uuid references auth.users(id) on delete set null,
+  recipient_email text not null,
+  reason text not null check (reason in ('publish', 'manual')),
+  idempotency_key text not null unique,
+  status text not null default 'pending' check (status in ('pending', 'sent', 'failed')),
+  provider_message_id text,
+  error_message text,
+  attempt_count integer not null default 0,
+  sent_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists notification_deliveries_entry_idx
+on public.notification_deliveries (entry_id, created_at desc);
+
+create index if not exists notification_deliveries_status_idx
+on public.notification_deliveries (status, created_at desc);
+
 -- Bootstrap the oldest account as the first administrator.
 insert into public.admins (user_id)
 select id from auth.users order by created_at asc limit 1
@@ -95,10 +117,12 @@ grant select on public.entries to authenticated;
 grant insert, update, delete on public.entries to authenticated;
 grant select, insert, update, delete on public.entry_images to authenticated;
 grant select on public.admins to authenticated;
+grant select, insert, update, delete on public.notification_deliveries to authenticated;
 
 alter table public.entries enable row level security;
 alter table public.entry_images enable row level security;
 alter table public.admins enable row level security;
+alter table public.notification_deliveries enable row level security;
 
 drop policy if exists "Authenticated members can read published entries" on public.entries;
 drop policy if exists "Members read published entries and admins read all" on public.entries;
@@ -110,6 +134,7 @@ drop policy if exists "Members read images for visible entries" on public.entry_
 drop policy if exists "Admins insert entry images" on public.entry_images;
 drop policy if exists "Admins update entry images" on public.entry_images;
 drop policy if exists "Admins delete entry images" on public.entry_images;
+drop policy if exists "Admins manage notification deliveries" on public.notification_deliveries;
 
 create policy "Members read published entries and admins read all"
 on public.entries for select to authenticated
@@ -155,6 +180,11 @@ with check (public.is_admin());
 create policy "Admins delete entry images"
 on public.entry_images for delete to authenticated
 using (public.is_admin());
+
+create policy "Admins manage notification deliveries"
+on public.notification_deliveries for all to authenticated
+using (public.is_admin())
+with check (public.is_admin());
 
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values (

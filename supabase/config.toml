@@ -1,0 +1,2 @@
+[functions.send-entry-notification]
+verify_jwt = false

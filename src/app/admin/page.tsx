@@ -1,6 +1,11 @@
 import Link from "next/link";
 import Image from "next/image";
-import { deleteEntry, moveEntry } from "@/app/admin/actions";
+import {
+  deleteEntry,
+  moveEntry,
+  sendEntryNotification,
+} from "@/app/admin/actions";
+import { ConfirmActionButton } from "@/components/confirm-action-button";
 import { DeleteEntryButton } from "@/components/delete-entry-button";
 import { SiteHeader } from "@/components/site-header";
 import { requireAdmin } from "@/lib/supabase/auth";
@@ -16,12 +21,23 @@ const successMessages: Record<string, string> = {
   updated: "修改已保存。",
   deleted: "图文已删除。",
   reordered: "首页顺序已更新。",
+  "notification-sent": "更新通知已发送给所有成员。",
+  "notification-partial": "通知已发送，但有部分邮件失败，请到 Supabase 查看发送记录。",
+  "notification-empty": "当前没有带邮箱地址的成员账号。",
+  "notification-failed": "邮件函数暂时无法调用，请检查 Supabase Edge Function。",
+};
+
+const notificationMessages: Record<string, string> = {
+  sent: "已自动向所有成员发送更新通知。",
+  partial: "内容已发布，但有部分通知发送失败。",
+  empty: "内容已发布；当前没有可接收通知的成员账号。",
+  failed: "内容已发布，但邮件函数暂时无法调用。",
 };
 
 export default async function AdminPage({
   searchParams,
 }: {
-  searchParams: Promise<{ success?: string; error?: string }>;
+  searchParams: Promise<{ success?: string; error?: string; notification?: string }>;
 }) {
   const { supabase, user } = await requireAdmin();
   const query = await supabase
@@ -53,16 +69,21 @@ export default async function AdminPage({
           </Link>
         </div>
 
-        {(params.success || params.error) && (
-          <p
+        {(params.success || params.error || params.notification) && (
+          <div
             className={`mt-8 border-l pl-4 text-xs ${
               params.error ? "border-[#9d4d40] text-[#8c453a]" : "border-ink text-muted"
             }`}
           >
-            {params.error
-              ? decodeURIComponent(params.error)
-              : successMessages[params.success ?? ""]}
-          </p>
+            <p>
+              {params.error
+                ? decodeURIComponent(params.error)
+                : successMessages[params.success ?? ""]}
+            </p>
+            {params.notification && (
+              <p className="mt-2">{notificationMessages[params.notification]}</p>
+            )}
+          </div>
         )}
 
         <div className="mt-12">
@@ -125,9 +146,18 @@ export default async function AdminPage({
                     </button>
                   </form>
                   {entry.published && (
-                    <Link href={`/entry/${entry.slug}`} className="interactive-link text-muted hover:text-ink">
-                      查看
-                    </Link>
+                    <>
+                      <ConfirmActionButton
+                        action={sendEntryNotification.bind(null, entry.id)}
+                        confirmText="确定再次向所有成员发送这篇内容的更新通知吗？"
+                        className="interactive-link cursor-pointer border-0 bg-transparent p-0 uppercase tracking-[0.16em] text-muted hover:text-ink"
+                      >
+                        发送通知
+                      </ConfirmActionButton>
+                      <Link href={`/entry/${entry.slug}`} className="interactive-link text-muted hover:text-ink">
+                        查看
+                      </Link>
+                    </>
                   )}
                   <Link href={`/admin/${entry.id}/edit`} className="interactive-link">
                     编辑
