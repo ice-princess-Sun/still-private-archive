@@ -2,7 +2,7 @@
 
 本文件记录 STILL 网站的重要功能、优化与修复。
 
-格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，日期使用 \`YYYY-MM-DD\`。
+格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，日期使用 `YYYY-MM-DD`。
 
 ## [未发布]
 
@@ -12,7 +12,7 @@
 
 - 新内容首次发布时，自动向所有已注册成员发送邮件通知。
 - 管理后台为已发布内容提供“发送通知”操作，可按需手动重发。
-- 新增 Supabase Edge Function，通过 Resend 使用 \`updates@notify.xxmi.space\` 发信。
+- 新增 Supabase Edge Function，通过 Resend 使用 `updates@notify.xxmi.space` 发信。
 - 新增基础发送记录，保存收件人、发送状态、失败原因和服务商消息编号。
 
 ### 安全与可靠性
@@ -37,7 +37,7 @@
 
 ### 对应提交
 
-- \`Add manual homepage ordering\`
+- `Add manual homepage ordering`
 
 ## [0.8.0] - 2026-06-26
 
@@ -52,7 +52,7 @@
 
 ### 对应提交
 
-- \`Improve portrait photo support\`
+- `Improve portrait photo support`
 
 ## [0.7.0] - 2026-06-26
 
@@ -69,7 +69,7 @@
 
 ### 对应提交
 
-- \`Add time based ambience\`
+- `Add time based ambience`
 
 ## [0.6.0] - 2026-06-26
 
@@ -87,7 +87,7 @@
 
 ### 对应提交
 
-- \`Enhance login hero and interactions\`
+- `Enhance login hero and interactions`
 
 ## [0.5.0] - 2026-06-25
 
@@ -102,7 +102,7 @@
 
 ### 对应提交
 
-- \`7f24dac\` Optimize private image caching and lazy loading
+- `7f24dac` Optimize private image caching and lazy loading
 
 ## [0.4.0] - 2026-06-25
 
@@ -118,8 +118,8 @@
 
 ### 对应提交
 
-- \`603fe7e\` Upload images directly to Supabase
-- \`fda4c82\` Fix mobile multi-image upload limit
+- `603fe7e` Upload images directly to Supabase
+- `fda4c82` Fix mobile multi-image upload limit
 
 ## [0.3.0] - 2026-06-25
 
@@ -134,20 +134,20 @@
 
 ### 对应提交
 
-- \`939ab41\` Add multiple images and post authors
+- `939ab41` Add multiple images and post authors
 
 ## [0.2.0] - 2026-06-25
 
 ### 优化
 
 - 手机端显示 About 和 Admin 导航。
-- 手机端退出入口统一使用 \`Logout\`。
+- 手机端退出入口统一使用 `Logout`。
 - Logout 的字体、字号、字距和颜色与 Admin 导航一致。
 
 ### 对应提交
 
-- \`6d0f1e4\` Fix mobile navigation
-- \`682ebce\` Style logout navigation
+- `6d0f1e4` Fix mobile navigation
+- `682ebce` Style logout navigation
 
 ## [0.1.0] - 2026-06-25
 
@@ -163,4 +163,4 @@
 
 ### 对应提交
 
-- \`d9d535e\` Initial website
+- `d9d535e` Initial website
