@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">STILL</string>
+    <string name="title_activity_main">STILL</string>
+    <string name="package_name">xxmi.still.space</string>
+    <string name="custom_url_scheme">xxmi.still.space</string>
+</resources>
