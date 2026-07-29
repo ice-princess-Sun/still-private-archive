@@ -1,0 +1,6 @@
+node_modules/
+dist/
+.tool-cache/
+.android-sdk/
+.npm-cache/
+*.tsbuildinfo
