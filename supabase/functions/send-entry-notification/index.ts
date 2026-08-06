@@ -12,7 +12,12 @@ type Recipient = {
   email: string;
 };
 
-const JSON_HEADERS = { "Content-Type": "application/json" };
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+const JSON_HEADERS = { "Content-Type": "application/json", ...CORS_HEADERS };
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: JSON_HEADERS });
@@ -59,6 +64,12 @@ function emailHtml({
 }
 
 Deno.serve(async (request) => {
+  // Capacitor uses a WebView, so its cross-origin function call is preceded by
+  // an OPTIONS request. Respond before authentication; the POST remains fully
+  // protected by the administrator check below.
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
   if (request.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL");

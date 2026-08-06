@@ -68,6 +68,13 @@ type HomeCache = {
   entries: Entry[];
 };
 
+type NotificationResult = {
+  total?: number;
+  sent?: number;
+  failed?: number;
+  skipped?: number;
+};
+
 function homeCacheKey(userId: string) {
   return `still.home-cache.v1.${userId}`;
 }
@@ -101,6 +108,30 @@ function formatDate(value: string) {
     month: "2-digit",
     day: "2-digit",
   }).format(new Date(value));
+}
+
+async function requestEntryNotification(entryId: string, reason: "publish" | "manual") {
+  const { data, error } = await supabase.functions.invoke<NotificationResult>("send-entry-notification", {
+    body: { entryId, reason },
+  });
+  if (error) throw error;
+  if (!data || typeof data.total !== "number") {
+    throw new Error("通知服务没有返回有效结果，请稍后重试。");
+  }
+  return {
+    total: data.total,
+    sent: Number(data.sent ?? 0),
+    failed: Number(data.failed ?? 0),
+    skipped: Number(data.skipped ?? 0),
+  };
+}
+
+function notificationMessage(result: Required<NotificationResult>) {
+  if (result.total === 0) return "没有可接收通知的成员。";
+  if (result.failed > 0) {
+    return `通知未全部发出：成功 ${result.sent} 人，失败 ${result.failed} 人${result.skipped ? `，已跳过 ${result.skipped} 人` : ""}。`;
+  }
+  return `通知已发出：成功 ${result.sent} 人${result.skipped ? `，已跳过 ${result.skipped} 人` : ""}。`;
 }
 
 function extensionFrom(name: string, type?: string) {
@@ -417,7 +448,7 @@ function Admin({ onBack, onCreate, onEdit, onOpen, onNotice }: { onBack: () => v
   useEffect(() => { void load(); }, []);
   async function remove(entry: Entry) { if (!window.confirm(`删除“${entry.title}”？此操作不可撤销。`)) return; const paths = entry.images.map((image) => image.storage_path); const { error } = await supabase.from("entries").delete().eq("id", entry.id); if (error) return onNotice(error.message); if (paths.length) await supabase.storage.from("archive-images").remove(paths); await load(); onNotice("图文已删除。"); }
   async function move(index: number, direction: -1 | 1) { const target = index + direction; if (target < 0 || target >= entries.length) return; const reordered = [...entries]; [reordered[index], reordered[target]] = [reordered[target], reordered[index]]; for (const [position, entry] of reordered.entries()) { const { error } = await supabase.from("entries").update({ display_order: (position + 1) * 1000 }).eq("id", entry.id); if (error) return onNotice(error.message); } setEntries(reordered); }
-  async function sendNotification(entry: Entry) { if (!window.confirm(`确定再次向所有成员发送“${entry.title}”的更新通知吗？`)) return; setNotifyingId(entry.id); const { error } = await supabase.functions.invoke("send-entry-notification", { body: { entryId: entry.id, reason: "manual" } }); setNotifyingId(null); onNotice(error ? `通知发送失败：${error.message}` : "更新通知已发送给所有成员。"); }
+  async function sendNotification(entry: Entry) { if (!window.confirm(`确定再次向所有成员发送“${entry.title}”的更新通知吗？`)) return; setNotifyingId(entry.id); try { onNotice(notificationMessage(await requestEntryNotification(entry.id, "manual"))); } catch (error) { onNotice(`通知发送失败：${errorMessage(error)}`); } finally { setNotifyingId(null); } }
   return <section className="page admin"><button className="back" onClick={onBack}>← 返回主页</button><div className="section-heading"><div><p className="eyebrow">ADMINISTRATION</p><h1>内容管理</h1></div><button className="primary compact" onClick={onCreate}>新建图文 <span>+</span></button></div>{loading ? <p className="muted">正在加载…</p> : <div className="admin-list">{entries.map((entry, index) => <article key={entry.id}><div className="admin-thumb">{entry.images[0]?.signedUrl && <img src={entry.images[0].signedUrl} alt="" />}</div><div className="admin-copy"><div><h2>{entry.title}</h2><span className={entry.published ? "badge live" : "badge"}>{entry.published ? "已发布" : "草稿"}</span></div><p className="muted">{entry.summary}</p></div><div className="admin-actions"><button disabled={!index} onClick={() => void move(index, -1)}>上移</button><button disabled={index === entries.length - 1} onClick={() => void move(index, 1)}>下移</button>{entry.published && <><button onClick={() => onOpen(entry)}>查看</button><button disabled={notifyingId === entry.id} onClick={() => void sendNotification(entry)}>{notifyingId === entry.id ? "发送中…" : "发送通知"}</button></>}<button onClick={() => onEdit(entry)}>编辑</button><button className="danger" onClick={() => void remove(entry)}>删除</button></div></article>)}</div>}</section>;
 }
 
@@ -434,7 +465,12 @@ function Editor({ entry, user, onCancel, onSaved }: { entry?: Entry; user: User;
       const now = new Date().toISOString(); let entryId = entry?.id; let becamePublished = false;
       if (!entry) { const { data, error } = await supabase.from("entries").insert({ ...fields, published: draft.published, published_at: draft.published ? now : null, image_path: desired[0].storage_path, author_id: user.id, author_email: user.email ?? null, display_order: await nextDisplayOrder() }).select("id").single(); if (error) throw error; entryId = data.id; const { error: imagesError } = await supabase.from("entry_images").insert(desired.map(({ storage_path, position }) => ({ entry_id: entryId, storage_path, position }))); if (imagesError) throw imagesError; }
       else { becamePublished = draft.published && !entry.published; const retained = new Set(desired.flatMap((image) => image.id ? [image.id] : [])); const removed = entry.images.filter((image) => !retained.has(image.id)); for (const image of desired.filter((item) => item.id)) { const { error } = await supabase.from("entry_images").update({ position: image.position }).eq("id", image.id!); if (error) throw error; } const insertRows = desired.filter((item) => !item.id).map(({ storage_path, position }) => ({ entry_id: entryId, storage_path, position })); if (insertRows.length) { const { error } = await supabase.from("entry_images").insert(insertRows); if (error) throw error; } if (removed.length) { const { error } = await supabase.from("entry_images").delete().in("id", removed.map((image) => image.id)); if (error) throw error; await supabase.storage.from("archive-images").remove(removed.map((image) => image.storage_path)); } const { error } = await supabase.from("entries").update({ ...fields, published: draft.published, image_path: desired[0].storage_path, published_at: draft.published ? (entry.published_at ?? now) : null, updated_at: now }).eq("id", entryId); if (error) throw error; }
-      if ((draft.published && !entry) || becamePublished) await supabase.functions.invoke("send-entry-notification", { body: { entryId, reason: "publish" } }); onSaved(entry ? "图文已保存。" : "图文已创建。");
+      let notification = "";
+      if ((draft.published && !entry) || becamePublished) {
+        try { notification = ` ${notificationMessage(await requestEntryNotification(entryId!, "publish"))}`; }
+        catch (error) { notification = ` 但更新邮件未发出：${errorMessage(error)}`; }
+      }
+      onSaved(`${entry ? "图文已保存。" : "图文已创建。"}${notification}`);
     } catch (error) { if (newPaths.length) await supabase.storage.from("archive-images").remove(newPaths); setMessage(errorMessage(error)); setSaving(false); } }
   return <section className="page editor"><button className="back" onClick={onCancel}>← 取消</button><header><p className="eyebrow">ADMINISTRATION</p><h1>{entry ? "编辑图文" : "新建图文"}</h1><p className="editor-intro">按顺序填写文字、照片和发布状态；保存前仍可自由调整。</p></header><form onSubmit={submit}><fieldset className="editor-section"><legend><span>01</span>基本信息</legend><p className="editor-section-note">这些内容会出现在首页列表与图文详情的开头。</p><div className="editor-field-grid"><label>标题<input required value={draft.title} onChange={(e) => update("title", e.target.value)} placeholder="例如：雨停之后" /></label><label>网址标识<small>只用小写英文、数字和连字符。</small><input required value={draft.slug} onChange={(e) => update("slug", e.target.value)} placeholder="after-the-rain" /></label></div><label className="editor-summary-field">摘要<small>用一两句话概括这篇图文的内容。</small><textarea required value={draft.summary} onChange={(e) => update("summary", e.target.value)} placeholder="写下这篇图文想留下的一句话。" /></label></fieldset><fieldset className="editor-section"><legend><span>02</span>正文与照片</legend><p className="editor-section-note">第一张照片会作为封面；可随时调整照片的顺序。</p><label>正文<small>段落之间空一行，阅读时会保留段落间距。</small><textarea className="tall" required value={draft.body} onChange={(e) => update("body", e.target.value)} placeholder="从这里开始写正文。" /></label><div className="picker"><div><strong>图文照片</strong><small>最多 10 张，每张不超过 10 MB</small></div><div className="picker-actions"><button type="button" onClick={() => void takePhoto()}>拍照</button><button type="button" onClick={() => void chooseGallery()}>从相册选择</button><input ref={inputRef} hidden type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple onChange={(event) => { appendFiles(Array.from(event.currentTarget.files ?? [])); event.currentTarget.value = ""; }} /></div></div>{draft.images.length > 0 && <div className="draft-images">{draft.images.map((image, index) => <article key={image.key}><img src={image.previewUrl} alt="" /><div><strong>{index === 0 ? "封面" : `图片 ${index + 1}`}</strong><div><button type="button" disabled={!index} onClick={() => moveImage(index, -1)}>前移</button><button type="button" disabled={index === draft.images.length - 1} onClick={() => moveImage(index, 1)}>后移</button><button type="button" className="danger" onClick={() => removeImage(index)}>移除</button></div></div></article>)}</div>}</fieldset><fieldset className="editor-section editor-publish-section"><legend><span>03</span>发布设置</legend><label className="publish-toggle"><input type="checkbox" checked={draft.published} onChange={(event) => update("published", event.target.checked)} /><span><strong>立即发布给所有成员</strong><small>关闭后会作为草稿保留，只有管理员能看见。</small></span></label></fieldset>{message && <p className="error">{message}</p>}<button className="primary" disabled={saving}>{saving ? "正在保存…" : entry ? "保存全部修改" : "创建并保存图文"}<span>→</span></button></form></section>;
 }
