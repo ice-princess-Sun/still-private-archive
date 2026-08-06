@@ -4,6 +4,8 @@ import { App as NativeApp } from "@capacitor/app";
 import { Camera, MediaTypeSelection } from "@capacitor/camera";
 import type { User } from "@supabase/supabase-js";
 import { loadSavedCredentials, saveSavedCredentials } from "./secure-credentials";
+import { EntryComments } from "./entry-comments";
+import { NotificationHistory } from "./notification-history";
 import { setRememberLogin, supabase } from "./supabase";
 
 const MAX_IMAGES = 10;
@@ -45,6 +47,7 @@ type Screen =
   | { name: "home" }
   | { name: "entry"; entry: Entry; returnTo: "home" | "admin" }
   | { name: "admin" }
+  | { name: "notifications" }
   | { name: "editor"; entry?: Entry };
 
 type DraftImage = {
@@ -258,6 +261,7 @@ export function App() {
     setScreen((current) => {
       if (current.name === "entry") return { name: current.returnTo };
       if (current.name === "admin") return { name: "home" };
+      if (current.name === "notifications") return { name: "admin" };
       if (current.name === "editor") return { name: "admin" };
       return current;
     });
@@ -296,16 +300,18 @@ export function App() {
             onRefresh={() => user ? loadHome(user.id) : Promise.resolve()}
           />
         )}
-        {screen.name === "entry" && <EntryView entry={screen.entry} onBack={goBack} />}
+        {screen.name === "entry" && <EntryView entry={screen.entry} user={user} isAdmin={admin} onBack={goBack} />}
         {screen.name === "admin" && admin && (
           <Admin
             onBack={() => setScreen({ name: "home" })}
             onCreate={() => setScreen({ name: "editor" })}
+            onNotifications={() => setScreen({ name: "notifications" })}
             onEdit={(entry) => setScreen({ name: "editor", entry })}
             onOpen={(entry) => setScreen({ name: "entry", entry, returnTo: "admin" })}
             onNotice={setNotice}
           />
         )}
+        {screen.name === "notifications" && admin && <NotificationHistory onBack={() => setScreen({ name: "admin" })} />}
         {screen.name === "editor" && admin && (
           <Editor
             entry={screen.entry}
@@ -437,19 +443,19 @@ function Home({ entries, onOpen, onRefresh }: { entries: Entry[]; onOpen: (entry
   return <section className="page home-page" onTouchStart={startPull} onTouchMove={trackPull} onTouchEnd={() => void finishPull()} onTouchCancel={() => { pullStart.current = null; setPullDistance(0); }}><div className="pull-indicator" style={{ height: pullDistance }}><span>{refreshLabel}</span></div><section className="hero"><p className="eyebrow">PRIVATE ARCHIVE · {new Date().getFullYear()}</p><h1>Quiet things,<br /><span>carefully kept.</span></h1><p className="muted intro">这里收藏那些值得被慢慢看见的文字与影像。每一次访问，都保持私密。</p></section><div className="section-heading"><div><p className="eyebrow">JOURNAL</p><h2>最近收录</h2></div></div>{refreshError && <p className="error refresh-error">{refreshError}</p>}{entries.length === 0 ? <div className="empty">还没有公开的图文内容。</div> : <div className="entry-grid">{entries.map((entry) => <button className="entry-card" key={entry.id} onClick={() => onOpen(entry)}><div className="entry-media">{entry.images[0]?.signedUrl ? <img src={entry.images[0].signedUrl} alt="" /> : <div className="image-placeholder" />}{entry.images.length > 1 && <span className="photo-count">{entry.images.length} PHOTOS</span>}<span className="member-only">MEMBERS ONLY</span></div><div className="entry-card-copy"><p className="eyebrow">{formatDate(entry.published_at ?? entry.created_at)}</p><h3>{entry.title}</h3><p className="muted">{entry.summary}</p><p className="entry-author">BY {entry.author_email ?? "成员"}</p></div></button>)}</div>}</section>;
 }
 
-function EntryView({ entry, onBack }: { entry: Entry; onBack: () => void }) {
+function EntryView({ entry, user, isAdmin, onBack }: { entry: Entry; user: User; isAdmin: boolean; onBack: () => void }) {
   useEffect(() => { window.scrollTo(0, 0); }, [entry.id]);
-  return <article className="page detail"><button className="back" onClick={onBack}>← 返回</button><header><p className="eyebrow">JOURNAL · {formatDate(entry.published_at ?? entry.created_at)}</p><h1>{entry.title}</h1><p className="summary">{entry.summary}</p><p className="author">发布者 · {entry.author_email ?? "成员"}</p></header><div className="photos">{entry.images.map((image, index) => image.signedUrl && <figure key={image.id}><img src={image.signedUrl} alt={`${entry.title} 图片 ${index + 1}`} /><figcaption>{String(index + 1).padStart(2, "0")} / {String(entry.images.length).padStart(2, "0")}</figcaption></figure>)}</div><div className="body-copy">{entry.body.split(/\n\s*\n/).filter(Boolean).map((paragraph, index) => <p key={index}>{paragraph}</p>)}</div></article>;
+  return <article className="page detail"><button className="back" onClick={onBack}>← 返回</button><header><p className="eyebrow">JOURNAL · {formatDate(entry.published_at ?? entry.created_at)}</p><h1>{entry.title}</h1><p className="summary">{entry.summary}</p><p className="author">发布者 · {entry.author_email ?? "成员"}</p></header><div className="photos">{entry.images.map((image, index) => image.signedUrl && <figure key={image.id}><img src={image.signedUrl} alt={`${entry.title} 图片 ${index + 1}`} /><figcaption>{String(index + 1).padStart(2, "0")} / {String(entry.images.length).padStart(2, "0")}</figcaption></figure>)}</div><div className="body-copy">{entry.body.split(/\n\s*\n/).filter(Boolean).map((paragraph, index) => <p key={index}>{paragraph}</p>)}</div><EntryComments entryId={entry.id} currentUserId={user.id} currentUserEmail={user.email} isAdmin={isAdmin} /></article>;
 }
 
-function Admin({ onBack, onCreate, onEdit, onOpen, onNotice }: { onBack: () => void; onCreate: () => void; onEdit: (entry: Entry) => void; onOpen: (entry: Entry) => void; onNotice: (value: string) => void }) {
+function Admin({ onBack, onCreate, onNotifications, onEdit, onOpen, onNotice }: { onBack: () => void; onCreate: () => void; onNotifications: () => void; onEdit: (entry: Entry) => void; onOpen: (entry: Entry) => void; onNotice: (value: string) => void }) {
   const [entries, setEntries] = useState<Entry[]>([]); const [loading, setLoading] = useState(true); const [notifyingId, setNotifyingId] = useState<string | null>(null);
   async function load() { setLoading(true); const { data, error } = await supabase.from("entries").select(ENTRY_SELECT).order("display_order", { ascending: true }).order("created_at", { ascending: false }); if (error) onNotice(error.message); else setEntries(await enrichEntries((data ?? []) as Entry[])); setLoading(false); }
   useEffect(() => { void load(); }, []);
   async function remove(entry: Entry) { if (!window.confirm(`删除“${entry.title}”？此操作不可撤销。`)) return; const paths = entry.images.map((image) => image.storage_path); const { error } = await supabase.from("entries").delete().eq("id", entry.id); if (error) return onNotice(error.message); if (paths.length) await supabase.storage.from("archive-images").remove(paths); await load(); onNotice("图文已删除。"); }
   async function move(index: number, direction: -1 | 1) { const target = index + direction; if (target < 0 || target >= entries.length) return; const reordered = [...entries]; [reordered[index], reordered[target]] = [reordered[target], reordered[index]]; for (const [position, entry] of reordered.entries()) { const { error } = await supabase.from("entries").update({ display_order: (position + 1) * 1000 }).eq("id", entry.id); if (error) return onNotice(error.message); } setEntries(reordered); }
   async function sendNotification(entry: Entry) { if (!window.confirm(`确定再次向所有成员发送“${entry.title}”的更新通知吗？`)) return; setNotifyingId(entry.id); try { onNotice(notificationMessage(await requestEntryNotification(entry.id, "manual"))); } catch (error) { onNotice(`通知发送失败：${errorMessage(error)}`); } finally { setNotifyingId(null); } }
-  return <section className="page admin"><button className="back" onClick={onBack}>← 返回主页</button><div className="section-heading"><div><p className="eyebrow">ADMINISTRATION</p><h1>内容管理</h1></div><button className="primary compact" onClick={onCreate}>新建图文 <span>+</span></button></div>{loading ? <p className="muted">正在加载…</p> : <div className="admin-list">{entries.map((entry, index) => <article key={entry.id}><div className="admin-thumb">{entry.images[0]?.signedUrl && <img src={entry.images[0].signedUrl} alt="" />}</div><div className="admin-copy"><div><h2>{entry.title}</h2><span className={entry.published ? "badge live" : "badge"}>{entry.published ? "已发布" : "草稿"}</span></div><p className="muted">{entry.summary}</p></div><div className="admin-actions"><button disabled={!index} onClick={() => void move(index, -1)}>上移</button><button disabled={index === entries.length - 1} onClick={() => void move(index, 1)}>下移</button>{entry.published && <><button onClick={() => onOpen(entry)}>查看</button><button disabled={notifyingId === entry.id} onClick={() => void sendNotification(entry)}>{notifyingId === entry.id ? "发送中…" : "发送通知"}</button></>}<button onClick={() => onEdit(entry)}>编辑</button><button className="danger" onClick={() => void remove(entry)}>删除</button></div></article>)}</div>}</section>;
+  return <section className="page admin"><button className="back" onClick={onBack}>← 返回主页</button><div className="section-heading"><div><p className="eyebrow">ADMINISTRATION</p><h1>内容管理</h1></div><div className="admin-heading-actions"><button onClick={onNotifications}>通知记录</button><button className="primary compact" onClick={onCreate}>新建图文 <span>+</span></button></div></div>{loading ? <p className="muted">正在加载…</p> : <div className="admin-list">{entries.map((entry, index) => <article key={entry.id}><div className="admin-thumb">{entry.images[0]?.signedUrl && <img src={entry.images[0].signedUrl} alt="" />}</div><div className="admin-copy"><div><h2>{entry.title}</h2><span className={entry.published ? "badge live" : "badge"}>{entry.published ? "已发布" : "草稿"}</span></div><p className="muted">{entry.summary}</p></div><div className="admin-actions"><button disabled={!index} onClick={() => void move(index, -1)}>上移</button><button disabled={index === entries.length - 1} onClick={() => void move(index, 1)}>下移</button>{entry.published && <><button onClick={() => onOpen(entry)}>查看</button><button disabled={notifyingId === entry.id} onClick={() => void sendNotification(entry)}>{notifyingId === entry.id ? "发送中…" : "发送通知"}</button></>}<button onClick={() => onEdit(entry)}>编辑</button><button className="danger" onClick={() => void remove(entry)}>删除</button></div></article>)}</div>}</section>;
 }
 
 function Editor({ entry, user, onCancel, onSaved }: { entry?: Entry; user: User; onCancel: () => void; onSaved: (message: string) => void }) {
