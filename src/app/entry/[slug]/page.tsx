@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
 import { EntryImageFrame } from "@/components/entry-image-frame";
+import { EntryComments } from "@/components/entry-comments";
 import { SiteHeader } from "@/components/site-header";
+import { COMMENT_SELECT, type EntryComment } from "@/lib/comments";
 import { requireUser } from "@/lib/supabase/auth";
 import {
   authorLabel,
@@ -25,6 +27,12 @@ export default async function EntryPage({
 
   if (!data) notFound();
   const [entry] = withImageUrls([data as Entry]);
+  const { data: commentData } = await supabase
+    .from("entry_comments")
+    .select(COMMENT_SELECT)
+    .eq("entry_id", entry.id)
+    .order("created_at", { ascending: true });
+  const comments = (commentData ?? []) as EntryComment[];
 
   return (
     <main className="min-h-screen px-5 pb-20 md:px-10 lg:px-16">
@@ -78,6 +86,14 @@ export default async function EntryPage({
               </p>
             ))}
         </div>
+
+        <EntryComments
+          entryId={entry.id}
+          comments={comments}
+          currentUserId={user.id}
+          isAdmin={admin}
+          canComment={entry.published}
+        />
       </article>
     </main>
   );

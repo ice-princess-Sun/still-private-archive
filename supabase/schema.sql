@@ -78,6 +78,44 @@ on public.notification_deliveries (entry_id, created_at desc);
 create index if not exists notification_deliveries_status_idx
 on public.notification_deliveries (status, created_at desc);
 
+create table if not exists public.entry_comments (
+  id uuid primary key default gen_random_uuid(),
+  entry_id uuid not null references public.entries(id) on delete cascade,
+  author_id uuid references auth.users(id) on delete set null,
+  author_label text not null check (
+    char_length(author_label) between 1 and 80
+  ),
+  body text not null check (
+    char_length(btrim(body)) between 1 and 500
+  ),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists entry_comments_entry_created_idx
+on public.entry_comments (entry_id, created_at asc);
+
+create index if not exists entry_comments_author_idx
+on public.entry_comments (author_id);
+
+create or replace function public.set_entry_comment_updated_at()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
+drop trigger if exists set_entry_comment_updated_at on public.entry_comments;
+create trigger set_entry_comment_updated_at
+before update on public.entry_comments
+for each row execute function public.set_entry_comment_updated_at();
+
+revoke execute on function public.set_entry_comment_updated_at() from public;
+
 -- Bootstrap the oldest account as the first administrator.
 insert into public.admins (user_id)
 select id from auth.users order by created_at asc limit 1
@@ -104,7 +142,7 @@ create or replace function public.is_admin()
 returns boolean
 language sql
 stable
-security definer
+security invoker
 set search_path = ''
 as $$
   select exists (
@@ -112,17 +150,22 @@ as $$
   );
 $$;
 
+revoke execute on function public.is_admin() from public, anon;
 grant execute on function public.is_admin() to authenticated;
 grant select on public.entries to authenticated;
 grant insert, update, delete on public.entries to authenticated;
 grant select, insert, update, delete on public.entry_images to authenticated;
 grant select on public.admins to authenticated;
 grant select, insert, update, delete on public.notification_deliveries to authenticated;
+grant select, insert, delete on public.entry_comments to authenticated;
+revoke update on public.entry_comments from authenticated;
+grant update (body) on public.entry_comments to authenticated;
 
 alter table public.entries enable row level security;
 alter table public.entry_images enable row level security;
 alter table public.admins enable row level security;
 alter table public.notification_deliveries enable row level security;
+alter table public.entry_comments enable row level security;
 
 drop policy if exists "Authenticated members can read published entries" on public.entries;
 drop policy if exists "Members read published entries and admins read all" on public.entries;
@@ -135,6 +178,10 @@ drop policy if exists "Admins insert entry images" on public.entry_images;
 drop policy if exists "Admins update entry images" on public.entry_images;
 drop policy if exists "Admins delete entry images" on public.entry_images;
 drop policy if exists "Admins manage notification deliveries" on public.notification_deliveries;
+drop policy if exists "Members read comments for visible entries" on public.entry_comments;
+drop policy if exists "Members add comments to published entries" on public.entry_comments;
+drop policy if exists "Members edit their comments" on public.entry_comments;
+drop policy if exists "Members and admins delete comments" on public.entry_comments;
 
 create policy "Members read published entries and admins read all"
 on public.entries for select to authenticated
@@ -185,6 +232,59 @@ create policy "Admins manage notification deliveries"
 on public.notification_deliveries for all to authenticated
 using (public.is_admin())
 with check (public.is_admin());
+
+create policy "Members read comments for visible entries"
+on public.entry_comments for select to authenticated
+using (
+  public.is_admin()
+  or exists (
+    select 1 from public.entries
+    where entries.id = entry_comments.entry_id
+      and entries.published = true
+  )
+);
+
+create policy "Members add comments to published entries"
+on public.entry_comments for insert to authenticated
+with check (
+  author_id = (select auth.uid())
+  and author_label = split_part(
+    coalesce((select auth.jwt()) ->> 'email', 'member'),
+    '@',
+    1
+  )
+  and exists (
+    select 1 from public.entries
+    where entries.id = entry_comments.entry_id
+      and entries.published = true
+  )
+);
+
+create policy "Members edit their comments"
+on public.entry_comments for update to authenticated
+using (
+  author_id = (select auth.uid())
+  and exists (
+    select 1 from public.entries
+    where entries.id = entry_comments.entry_id
+      and entries.published = true
+  )
+)
+with check (
+  author_id = (select auth.uid())
+  and exists (
+    select 1 from public.entries
+    where entries.id = entry_comments.entry_id
+      and entries.published = true
+  )
+);
+
+create policy "Members and admins delete comments"
+on public.entry_comments for delete to authenticated
+using (
+  author_id = (select auth.uid())
+  or public.is_admin()
+);
 
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values (
