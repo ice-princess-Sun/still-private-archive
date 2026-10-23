@@ -1,0 +1,9 @@
+{
+  "public_emails": [
+    "updates@notify.xxmi.space"
+  ],
+  "private_path_prefixes": [
+    "design/"
+  ],
+  "allowed_binary_paths": []
+}
